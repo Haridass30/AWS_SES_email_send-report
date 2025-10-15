@@ -1,0 +1,4 @@
+Flask==3.0.3
+boto3==1.34.39
+requests==2.32.3
+Gunicorn==22.0.0

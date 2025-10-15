@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block content %}
+<h3 class="mb-3">Send Emails via AWS SES</h3>
+<form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+  <div class="mb-3">
+    <label class="form-label">Recipients CSV</label>
+    <input type="file" name="csv_file" class="form-control" accept=".csv" required>
+    <div class="form-text">CSV must include headers: Email, Name, MembershipID, Mobile</div>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Attachment (optional)</label>
+    <input type="file" name="attachment" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Subject Template</label>
+    <input type="text" name="subject_template" class="form-control" value="{{ default_subject }}">
+    <div class="form-text">You can use {Name} and {Membershipid}</div>
+  </div>
+  <div class="row g-3">
+    <div class="col-md-4">
+      <label class="form-label">From Email</label>
+      <input type="email" name="from_email" class="form-control" value="{{ default_from }}">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">YouTube Link</label>
+      <input type="url" name="youtube_link" class="form-control" value="{{ default_youtube }}">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">SES Config Set (optional)</label>
+      <input type="text" name="config_set" class="form-control" value="{{ default_config_set }}">
+    </div>
+  </div>
+  <div class="mt-4">
+    <button class="btn btn-primary" type="submit">Start Sending</button>
+  </div>
+</form>
+{% endblock %}

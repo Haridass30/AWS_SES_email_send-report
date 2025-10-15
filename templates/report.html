@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block content %}
+<h3 class="mb-3">Generate SES Campaign Report</h3>
+<form method="post" enctype="multipart/form-data">
+  <div class="mb-3">
+    <label class="form-label">SES Event S3 Bucket</label>
+    <input type="text" name="bucket" class="form-control" value="{{ default_bucket }}">
+  </div>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <label class="form-label">Start Date</label>
+      <input type="date" name="start_date" class="form-control" required>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">End Date</label>
+      <input type="date" name="end_date" class="form-control" required>
+    </div>
+  </div>
+  <div class="mt-3">
+    <label class="form-label">Input CSV</label>
+    <input type="file" name="input_csv" class="form-control" accept=".csv" required>
+    <div class="form-text">CSV must include headers: Email, Name, MembershipID, Mobile</div>
+  </div>
+  <div class="mt-4">
+    <button class="btn btn-primary" type="submit">Start Report</button>
+  </div>
+</form>
+{% endblock %}

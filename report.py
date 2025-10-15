@@ -6,12 +6,12 @@ from datetime import datetime, timedelta
 
 # -------- Configuration --------
 BUCKET_NAME = "ses-event-logs-example"
-START_DATE = datetime(2025, 10, 10)
-END_DATE = datetime(2025, 10, 10)
+START_DATE = datetime(2025, 10, 13)
+END_DATE = datetime(2025, 10, 15)
 DATE_PREFIXES = [f"ses/2025/10/{(START_DATE + timedelta(days=x)).strftime('%d')}/" 
                  for x in range((END_DATE - START_DATE).days + 1)]
-INPUT_CSV = "camp1.csv"
-OUTPUT_CSV = "email_campaign_report2.csv"
+INPUT_CSV = "camp3.csv"
+OUTPUT_CSV = "email_campaign_report-15-10-2025.csv"
 
 EVENT_PRIORITY = {
     "Bounce": 5,

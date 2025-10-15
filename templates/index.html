@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title">Send Emails via AWS SES</h5>
+        <p class="card-text">Upload a CSV and optionally an attachment, personalize content, and send.</p>
+        <a class="btn btn-primary" href="{{ url_for('send_ses') }}">Open</a>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title">Send Emails via MSG91</h5>
+        <p class="card-text">Use MSG91 template-based sending with batching and attachment.</p>
+        <a class="btn btn-primary" href="{{ url_for('send_msg91') }}">Open</a>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title">Generate SES Report</h5>
+        <p class="card-text">Combine your CSV with SES event logs from S3 to produce a report.</p>
+        <a class="btn btn-primary" href="{{ url_for('report') }}">Open</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

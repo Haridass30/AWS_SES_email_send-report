@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block content %}
+<h3 class="mb-3">Job Progress</h3>
+<div id="status" class="mb-3">Loading...</div>
+<div id="details" class="small"></div>
+<div id="download" class="mt-3"></div>
+<script>
+async function poll() {
+  try {
+    const res = await fetch('{{ url_for('status', job_id=job_id) }}');
+    const data = await res.json();
+    if (data.error) {
+      document.getElementById('status').innerText = 'Job not found';
+      return;
+    }
+    const processed = data.processed ?? 0;
+    const total = data.total ?? 0;
+    const successes = data.successes ?? 0;
+    const failures = data.failures ?? 0;
+    const statusText = data.status || 'pending';
+
+    document.getElementById('status').innerText = `Status: ${statusText} | ${processed}/${total} processed | ✅ ${successes} | ❌ ${failures}`;
+
+    if (Array.isArray(data.errors) && data.errors.length) {
+      document.getElementById('details').innerText = 'Errors: ' + data.errors.map(e => JSON.stringify(e)).join(' | ');
+    }
+
+    if (statusText === 'completed' && data.output_path) {
+      const fname = data.output_path.split('/').pop();
+      document.getElementById('download').innerHTML = `<a class="btn btn-success" href="{{ url_for('download', filename='') }}${fname}">Download Report</a>`;
+      return; // stop polling on completion with output
+    }
+
+    if (statusText === 'completed' || statusText === 'failed') {
+      return; // stop polling
+    }
+  } catch (e) {
+    console.error(e);
+  }
+  setTimeout(poll, 2000);
+}
+poll();
+</script>
+{% endblock %}

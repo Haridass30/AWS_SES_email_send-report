@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block content %}
+<h3 class="mb-3">Send Emails via MSG91</h3>
+<form method="post" enctype="multipart/form-data">
+  <div class="mb-3">
+    <label class="form-label">Recipients CSV</label>
+    <input type="file" name="csv_file" class="form-control" accept=".csv" required>
+    <div class="form-text">CSV must include headers: Email, Name, MembershipID, Mobile</div>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Attachment (optional)</label>
+    <input type="file" name="attachment" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
+  </div>
+  <div class="row g-3">
+    <div class="col-md-3">
+      <label class="form-label">Template ID</label>
+      <input type="text" name="template_id" class="form-control" value="{{ default_template_id }}" required>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">From Email</label>
+      <input type="email" name="from_email" class="form-control" value="{{ default_from }}">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Domain</label>
+      <input type="text" name="domain" class="form-control" value="{{ default_domain }}">
+    </div>
+    <div class="col-md-1">
+      <label class="form-label">Batch size</label>
+      <input type="number" name="batch_size" class="form-control" value="{{ default_batch_size }}" min="1">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Delay (s)</label>
+      <input type="number" name="delay_between_batches" class="form-control" value="{{ default_delay }}" min="0">
+    </div>
+  </div>
+  <div class="mt-4">
+    <button class="btn btn-primary" type="submit">Start Sending</button>
+  </div>
+</form>
+{% endblock %}

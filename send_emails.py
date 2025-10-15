@@ -6,14 +6,19 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
+from email.mime.image import MIMEImage
 
 ses_client = boto3.client('ses', region_name='ap-south-1')
 
 FROM_EMAIL = 'valuervijai@romexconsultancy.com'
-ATTACHMENT_PATH = '/home/adminuser/Desktop/py_aws/img/IEI NEW CE-10-KVK.jpg'
+
+ATTACHMENT_PATH1 = '/home/adminuser/Desktop/py_aws/img/1.png'
+ATTACHMENT_PATH2 = '/home/adminuser/Desktop/py_aws/img/2.png'
+ATTACHMENT_PATH3 = '/home/adminuser/Desktop/py_aws/img/3.png'
+ATTACHMENT_PATH4 = '/home/adminuser/Desktop/py_aws/img/IEI NEW CE-10-KVK.jpg'
 YOUTUBE_LINK = 'https://www.youtube.com/watch?v=Nx-iCLXUYDw&feature=youtu.be'
 
-SUBJECT = '{Name} {Membershipid} - TOGETHER, WE BUILD THE FUTURE – SUPPORT & ELECT THE ROW 10. MR K VIJAYA KUMAR (F-1183849) – FOR IEI COUNCIL – CIVIL DIVISION.'
+SUBJECT = '{Name}-10. MR K VIJAYA KUMAR (F-1183849) -TOGETHER, WE BUILD THE FUTURE – SUPPORT & ELECT THE ROW 10 – FOR IEI COUNCIL – CIVIL DIVISION ELECTION REMINDER.'
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -80,13 +85,13 @@ HTML_TEMPLATE = """
     <strong>Please note:</strong> Voting is completely online through the above link (no ballot papers).
   </p>
 </div>
-
 <h3 style="color:red;text-align:center;margin-top:12px;font-size:20px;">
+  <span style='text-align:center;font-size:17px;color:green'>GENTLE REMINDER</span><br>
   <span style="color:blue;">ONLINE VOTING IS ONGOING</span><br>
   START DATE: 04.10.2025 / ENDING DATE: 18.10.2025
 </h3>
 
-<img src="https://s3.ap-south-1.amazonaws.com/cdn.kaaikanistore.com/1.png"
+<img src="cid:image1"
      alt="MR. K. VIJAYA KUMAR"
      style="max-width:100%; display:block; margin:auto; margin-top:30px;">
 
@@ -101,6 +106,7 @@ HTML_TEMPLATE = """
 
 <h3 style="text-align:center;font-size:19px;">
   <span style="color:blue;">Watch this short YouTube video for the step-by-step voting procedure:</span><br>
+  <span style='text-align:center;font-size:17px;color:green'>Click</span>
 </h3>
 
 <div style="text-align:center;">
@@ -109,53 +115,27 @@ HTML_TEMPLATE = """
 <br>
 
 <h3 style="color:red;">DEAR {Name},</h3>
-<h3 style="font-family: Georgia, 'Times New Roman', Times, serif;">
-  Hope this finds you in good spirits and health…!
-</h3>
-
-
-<h3>
-  I, <span style="color:red;">10.</span> <span style="color:blue;">MR K VIJAYA KUMAR (F-1183849)</span>, am contesting for the Governing Council Election (Civil Engineering Division), Sessions 2025–2029.
-</h3>
+<p style="font-family: Georgia, 'Times New Roman', Times, serif;font-size:17px;">
+Greetings! Hope you are doing well and in good health.
+</p>
+<p style='font-size:17px'>This is a gentle reminder and renewed request for your <strong>valuable Vote & Support</strong> in the <strong>IE(I) Council Election – Civil Engineering Division (2025–2029).</strong></p>
+<p style='font-size:17px'>I, <strong>10. MR K VIJAYA KUMAR (F-1183849),</strong> am contesting for the <strong>Governing Council (Civil).</strong><br>
+The <strong>online voting is in progress from 4th to 18th October 2025</strong> — and only <strong>a few days remain</strong> to cast your vote.</p>
+<p style='font-size:17px'>
+ In the previous term (2021–2025), I missed success by just <strong>18 votes (6th All-India).</strong> With your kind support this time, I am confident of converting that near miss into success and continuing to serve our profession with greater commitment.
+</p>
+<p style='font-size:17px'>
+If you’ve <strong>already voted,</strong> I sincerely thank you for your kind support. 🙏<br>
+If <strong>not yet voted,</strong> please take a few minutes to cast your valuable vote.<br>
+For your convenience, I’ve again attached the <strong>Step-by-Step Online Voting Guide.</strong>
+</p>
 
 <p style='font-size:17px'>
-  <strong>The Online Voting for IE(I) Council Election is now in progress (04.10.2025 – 18.10.2025).</strong>
-  For your convenience, I am attaching a <strong>Step-by-Step Voting Procedure</strong> to help you through the process.
+<strong>Your single vote truly matters — it can make all the difference.<strong>
+Let’s together strengthen our Institution and the Civil Engineering fraternity.
 </p>
 
-<h3>
-  In the previous term (2021–2025), I narrowly missed success by just 18 votes, securing 6th place at the All-India level.
-  With your continued support and encouragement this time, I am confident of converting this narrow miss into a meaningful success and making a stronger contribution to our profession.
-</h3>
-
-<h3>
-  With over 36 years of professional experience in Civil Engineering, Valuation, and Institutional Service, I have devoted myself to advancing our profession, strengthening institutions, and fostering technical excellence across diverse platforms.
-</h3>
-
-<h3>Professional Contributions to IE(I) & IOV</h3>
-<ul>
-  <li><strong>Tamil Nadu State Committee Member (Civil), IE(I) (2023–2025)</strong></li>
-  <li><strong>Chairman & Secretary, IE(I) Madurai Local Centre (2014–2018)</strong>
-    <ul type="a">
-      <li>Led the Centre to Best Centre Award twice</li>
-      <li>Drove <strong>infrastructure development, technical programs, and membership growth</strong></li>
-    </ul>
-  </li>
-  <li><strong>Chairman, Institution of Valuers, Madurai Branch</strong>
-    <ul type="a">
-      <li>As Secretary earlier, guided the Branch to Best Branch Award</li>
-      <li><strong>Served as Vice Chairman twice, Institution of Valuers, Madurai Branch</strong></li>
-      <li>Organized multiple <strong>technical lectures, seminars, training programs,</strong> and networking events to enhance member participation and knowledge sharing</li>
-    </ul>
-  </li>
-</ul>
-
-<p>
-  With your <b>valuable support and encouragement,</b> I am confident of making a stronger impact this time
-  in <b>serving our Civil Engineering Division</b> at the national level.
-</p>
-
-<img src="https://s3.ap-south-1.amazonaws.com/cdn.kaaikanistore.com/2.png"
+<img src="cid:image2"
      alt="MR. K. VIJAYA KUMAR"
      style="height:900px; width:800px; display:block; margin:auto;">
 
@@ -167,8 +147,8 @@ HTML_TEMPLATE = """
 <h3 style="text-align:center;">“Building Tomorrow Together | एक साथ मिलकर कल का निर्माण”</h3>
 
 <h3>Thanks & Regards,</h3>
-<p>
-  <img src="https://s3.ap-south-1.amazonaws.com/cdn.kaaikanistore.com/3.png"
+<p style='font-size:17px'>
+  <img src="cid:image3"
        alt="Vote for MR. K. VIJAYA KUMAR"
        style="max-width:100%; height:100px;">
 </p>
@@ -185,12 +165,6 @@ HTML_TEMPLATE = """
 </html>
 """
 
-# Preload attachment once
-ATTACHMENT_DATA = None
-if os.path.exists(ATTACHMENT_PATH):
-    with open(ATTACHMENT_PATH, 'rb') as f:
-        ATTACHMENT_DATA = f.read()
-
 def send_email(to_email, name, membership_id, mobile):
     body_html = HTML_TEMPLATE.format(
         Name=name,
@@ -200,16 +174,30 @@ def send_email(to_email, name, membership_id, mobile):
     )
     subject = SUBJECT.format(Name=name, Membershipid=membership_id)
 
-    msg = MIMEMultipart()
+    msg = MIMEMultipart('related')
     msg['Subject'] = subject
     msg['From'] = FROM_EMAIL
     msg['To'] = to_email
-    msg.attach(MIMEText(body_html, 'html'))
 
-    if ATTACHMENT_DATA:
-        part = MIMEApplication(ATTACHMENT_DATA)
-        part.add_header('Content-Disposition', 'attachment', filename=os.path.basename(ATTACHMENT_PATH))
-        msg.attach(part)
+    alt = MIMEMultipart('alternative')
+    alt.attach(MIMEText(body_html, 'html'))
+    msg.attach(alt)
+
+    # Inline images
+    for cid, path in [('image1', ATTACHMENT_PATH1), ('image2', ATTACHMENT_PATH2), ('image3', ATTACHMENT_PATH3)]:
+        if os.path.exists(path):
+            with open(path, 'rb') as f:
+                img = MIMEImage(f.read())
+                img.add_header('Content-ID', f'<{cid}>')
+                img.add_header('Content-Disposition', 'inline', filename=os.path.basename(path))
+                msg.attach(img)
+
+    # Extra PDF/image attachment (optional)
+    if os.path.exists(ATTACHMENT_PATH4):
+        with open(ATTACHMENT_PATH4, 'rb') as f:
+            part = MIMEApplication(f.read())
+            part.add_header('Content-Disposition', 'attachment', filename=os.path.basename(ATTACHMENT_PATH4))
+            msg.attach(part)
 
     try:
         ses_client.send_raw_email(
@@ -222,11 +210,9 @@ def send_email(to_email, name, membership_id, mobile):
     except Exception as e:
         print(f"❌ Error sending to {to_email}: {e}")
 
-
-
 # CSV reading and threaded sending
-CSV_FILE = 'camp1.csv'
-MAX_THREADS = 14  # SES limit
+CSV_FILE = 'camp3.csv'
+MAX_THREADS = 14
 with open(CSV_FILE, 'r') as file:
     reader = csv.DictReader(file)
     recipients = list(reader)
@@ -240,7 +226,7 @@ with ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
             row['Email'].strip(),
             row['Name'].strip(),
             row['MembershipID'].strip(),
-            row['Mobile'].strip()  # <-- works once CSV header matches exactly
+            row['Mobile'].strip()
         ))
         if len(futures) % 14 == 0:
             time.sleep(1)
