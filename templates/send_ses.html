@@ -1,28 +1,49 @@
 {% extends 'base.html' %}
 {% block content %}
 <h3 class="mb-3">Send Emails via AWS SES</h3>
-<form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+<form method="post" enctype="multipart/form-data" class="needs-validation" novalidate id="sendForm">
   <div class="mb-3">
     <label class="form-label">Recipients CSV</label>
-    <input type="file" name="csv_file" class="form-control" accept=".csv" required>
-    <div class="form-text">CSV must include headers: Email, Name, MembershipID, Mobile</div>
+    <input type="file" name="csv_file" class="form-control" accept=".csv" required id="csvFile" onchange="previewCSV()">
+    <div class="form-text">Upload CSV file with headers. Column mapping will be configured below.</div>
   </div>
+  
+  <!-- CSV Column Preview and Mapping -->
+  <div class="mb-3" id="csvPreviewSection" style="display:none;">
+    <h5>CSV Column Mapping</h5>
+    <div class="alert alert-info">
+      <small>Map your CSV columns to template variables. The system will automatically detect available columns.</small>
+    </div>
+    <div id="columnMapping"></div>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Email Template</label>
+    <select name="email_template" class="form-control" required>
+      <option value="email_template.html">Election Template (Default)</option>
+      <option value="kym_template.html">KYM Form Reminder with New Year Greetings</option>
+    </select>
+    <div class="form-text">Select which email template to use</div>
+  </div>
+
   <div class="mb-3">
     <label class="form-label">Attachment (optional)</label>
     <input type="file" name="attachment" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
   </div>
+  
   <div class="mb-3">
     <label class="form-label">Subject Template</label>
     <input type="text" name="subject_template" class="form-control" value="{{ default_subject }}">
-    <div class="form-text">You can use {Name} and {Membershipid}</div>
+    <div class="form-text">Use {VariableName} for dynamic values. Available variables will be shown after CSV upload.</div>
   </div>
+  
   <div class="row g-3">
     <div class="col-md-4">
       <label class="form-label">From Email</label>
       <input type="email" name="from_email" class="form-control" value="{{ default_from }}">
     </div>
     <div class="col-md-4">
-      <label class="form-label">YouTube Link</label>
+      <label class="form-label">YouTube Link (optional)</label>
       <input type="url" name="youtube_link" class="form-control" value="{{ default_youtube }}">
     </div>
     <div class="col-md-4">
@@ -30,8 +51,111 @@
       <input type="text" name="config_set" class="form-control" value="{{ default_config_set }}">
     </div>
   </div>
+  
   <div class="mt-4">
     <button class="btn btn-primary" type="submit">Start Sending</button>
+    <button type="button" class="btn btn-secondary" onclick="resetForm()">Reset</button>
   </div>
 </form>
+
+<script>
+let csvColumns = [];
+let columnMappings = {};
+
+function previewCSV() {
+  const fileInput = document.getElementById('csvFile');
+  const file = fileInput.files[0];
+  if (!file) return;
+
+  const formData = new FormData();
+  formData.append('csv_file', file);
+
+  fetch('/api/preview-csv', {
+    method: 'POST',
+    body: formData
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.error) {
+      alert('Error: ' + data.error);
+      return;
+    }
+    csvColumns = data.columns;
+    displayColumnMapping();
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('Error previewing CSV');
+  });
+}
+
+function displayColumnMapping() {
+  const section = document.getElementById('csvPreviewSection');
+  const mappingDiv = document.getElementById('columnMapping');
+  
+  section.style.display = 'block';
+  
+  // Standard mappings that are commonly used
+  const standardMappings = {
+    'Email': 'Email',
+    'email': 'Email',
+    'Email Address': 'Email',
+    'Name': 'Name',
+    'name': 'Name',
+    'Full Name': 'Name',
+    'MembershipID': 'Membershipid',
+    'Membership ID': 'Membershipid',
+    'Member ID': 'Membershipid',
+    'Mobile': 'Mobile',
+    'mobile': 'Mobile',
+    'Phone': 'Mobile',
+    'Phone Number': 'Mobile'
+  };
+
+  let html = '<div class="table-responsive"><table class="table table-bordered table-sm"><thead><tr><th>CSV Column</th><th>Map to Template Variable</th></tr></thead><tbody>';
+  
+  csvColumns.forEach(col => {
+    const suggested = standardMappings[col] || '';
+    const varName = suggested || col.replace(/[^a-zA-Z0-9]/g, '');
+    html += `<tr>
+      <td><strong>${col}</strong></td>
+      <td>
+        <input type="text" 
+               class="form-control form-control-sm" 
+               name="column_mapping_${col}" 
+               value="${suggested}" 
+               placeholder="Variable name (e.g., Name, Email)"
+               onchange="updateMapping('${col}', this.value)">
+        <small class="text-muted">Use in template as: {${varName}}</small>
+      </td>
+    </tr>`;
+    columnMappings[col] = suggested || varName;
+  });
+  
+  html += '</tbody></table></div>';
+  html += '<div class="alert alert-warning mt-2"><small><strong>Note:</strong> Make sure to map at least the "Email" column. Variable names are case-sensitive in templates.</small></div>';
+  
+  mappingDiv.innerHTML = html;
+}
+
+function updateMapping(csvColumn, templateVar) {
+  columnMappings[csvColumn] = templateVar || csvColumn.replace(/[^a-zA-Z0-9]/g, '');
+}
+
+function resetForm() {
+  document.getElementById('sendForm').reset();
+  document.getElementById('csvPreviewSection').style.display = 'none';
+  csvColumns = [];
+  columnMappings = {};
+}
+
+// Store mappings in hidden fields before submit
+document.getElementById('sendForm').addEventListener('submit', function(e) {
+  const mappingInput = document.createElement('input');
+  mappingInput.type = 'hidden';
+  mappingInput.name = 'column_mappings';
+  mappingInput.value = JSON.stringify(columnMappings);
+  this.appendChild(mappingInput);
+});
+</script>
 {% endblock %}

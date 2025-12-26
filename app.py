@@ -53,10 +53,11 @@ def _build_ses_client():
     return boto3.client("ses", region_name=region)
 
 
-def _ses_send_worker(job_id, csv_path, attachment_path, subject_template, from_email, config_set, youtube_link):
+def _ses_send_worker(job_id, csv_path, attachment_path, subject_template, from_email, config_set, youtube_link, email_template, column_mappings):
     from email.mime.multipart import MIMEMultipart
     from email.mime.text import MIMEText
     from email.mime.application import MIMEApplication
+    from email.mime.image import MIMEImage
 
     _update_job(job_id, status="running", processed=0, successes=0, failures=0, errors=[])
     rows = _read_csv_rows(csv_path)
@@ -72,28 +73,132 @@ def _ses_send_worker(job_id, csv_path, attachment_path, subject_template, from_e
             attachment_bytes = f.read()
         attachment_filename = os.path.basename(attachment_path)
 
+    # Load inline images for templates that need them
+    inline_images = {}
+    if email_template == "kym_template.html":
+        sign_image_path = os.path.join(BASE_DIR, "img", "sign.png")
+        if os.path.exists(sign_image_path):
+            with open(sign_image_path, "rb") as f:
+                inline_images["signature"] = f.read()
+
+    # Parse column mappings (JSON string from form)
+    mappings = {}
+    if column_mappings:
+        try:
+            mappings = json.loads(column_mappings)
+        except:
+            # Fallback: try to parse as default structure
+            mappings = {}
+
+    # Create reverse mapping: template_var -> csv_column
+    reverse_mapping = {v: k for k, v in mappings.items() if v}
+
+    # Auto-detect column mappings if not provided or incomplete
+    if rows:
+        sample_row = rows[0]
+        # Always try to find Email column (required)
+        if 'Email' not in reverse_mapping:
+            for key in sample_row.keys():
+                key_lower = key.lower().strip()
+                if key_lower in ['email', 'e-mail', 'email address']:
+                    reverse_mapping['Email'] = key
+                    break
+        
+        # Auto-detect other common columns if not mapped
+        for key in sample_row.keys():
+            key_lower = key.lower().strip()
+            if key_lower in ['name', 'full name', 'member name'] and 'Name' not in reverse_mapping:
+                reverse_mapping['Name'] = key
+            elif key_lower in ['membershipid', 'membership id', 'member id', 'memberid'] and 'Membershipid' not in reverse_mapping:
+                reverse_mapping['Membershipid'] = key
+            elif key_lower in ['mobile', 'phone', 'phone number', 'mobile number'] and 'Mobile' not in reverse_mapping:
+                reverse_mapping['Mobile'] = key
+
     # Render email HTML using Jinja template in app context
     with app.app_context():
         for row in rows:
-            to_email = row.get("Email", "").strip()
-            name = row.get("Name", "").strip()
-            membership_id = row.get("MembershipID", "").strip()
-            mobile = row.get("Mobile", "").strip()
+            # Extract values using dynamic mapping
+            template_vars = {}
+            
+            # Get email (required) - try multiple methods
+            email_col = reverse_mapping.get('Email')
+            if not email_col:
+                # Last resort: try common column names
+                for col in ['Email', 'email', 'E-mail', 'Email Address']:
+                    if col in row:
+                        email_col = col
+                        break
+            
+            if not email_col:
+                errors = job_states[job_id].get("errors", [])
+                errors.append({"email": "N/A", "error": "Email column not found in CSV. Please map the email column."})
+                _update_job(job_id, processed=job_states[job_id]["processed"] + 1, failures=job_states[job_id]["failures"] + 1, errors=errors)
+                continue
+            
+            to_email = row.get(email_col, "").strip()
+            if not to_email:
+                errors = job_states[job_id].get("errors", [])
+                errors.append({"email": "N/A", "error": f"Email value is empty in row"})
+                _update_job(job_id, processed=job_states[job_id]["processed"] + 1, failures=job_states[job_id]["failures"] + 1, errors=errors)
+                continue
 
-            subject = subject_template.replace("{Name}", name).replace("{Membershipid}", membership_id)
-            html_body = render_template(
-                "email_template.html",
-                Name=name,
-                Membershipid=membership_id,
-                Mobile=mobile,
-                YouTubeLink=youtube_link or "",
-            )
+            # Map all other variables dynamically
+            for template_var, csv_col in reverse_mapping.items():
+                if template_var != 'Email':  # Already handled
+                    template_vars[template_var] = row.get(csv_col, "").strip()
+            
+            # Add any additional columns from CSV as template variables (for flexibility)
+            for csv_col, value in row.items():
+                if csv_col not in reverse_mapping.values() and csv_col != email_col:
+                    # Use column name as variable name (sanitized)
+                    var_name = csv_col.replace(' ', '').replace('-', '').replace('_', '')
+                    if var_name and var_name not in template_vars:
+                        template_vars[var_name] = value.strip()
+            
+            # Add YouTube link if provided
+            if youtube_link:
+                template_vars['YouTubeLink'] = youtube_link
 
-            msg = MIMEMultipart()
+            # Replace subject template variables dynamically
+            subject = subject_template
+            for var_name, var_value in template_vars.items():
+                subject = subject.replace(f"{{{var_name}}}", var_value)
+                subject = subject.replace(f"{{{var_name.lower()}}}", var_value)
+                subject = subject.replace(f"{{{var_name.upper()}}}", var_value)
+
+            # Render template with all variables
+            try:
+                html_body = render_template(email_template, **template_vars)
+            except Exception as e:
+                errors = job_states[job_id].get("errors", [])
+                errors.append({"email": to_email, "error": f"Template rendering error: {str(e)}"})
+                _update_job(job_id, processed=job_states[job_id]["processed"] + 1, failures=job_states[job_id]["failures"] + 1, errors=errors)
+                continue
+
+            # Use 'related' multipart if we have inline images, otherwise use regular multipart
+            if inline_images:
+                msg = MIMEMultipart('related')
+            else:
+                msg = MIMEMultipart()
+            
             msg["Subject"] = subject
             msg["From"] = from_email
             msg["To"] = to_email
-            msg.attach(MIMEText(html_body, "html"))
+            
+            # Create alternative part for HTML content
+            if inline_images:
+                alt = MIMEMultipart('alternative')
+                alt.attach(MIMEText(html_body, "html"))
+                msg.attach(alt)
+            else:
+                msg.attach(MIMEText(html_body, "html"))
+
+            # Attach inline images
+            for cid, image_data in inline_images.items():
+                img = MIMEImage(image_data)
+                img.add_header('Content-ID', f'<{cid}>')
+                img.add_header('Content-Disposition', 'inline', filename=f'{cid}.png')
+                msg.attach(img)
 
             if attachment_bytes:
                 part = MIMEApplication(attachment_bytes)
@@ -220,16 +325,55 @@ def _report_worker(job_id, bucket, start_date, end_date, input_csv_path, output_
         recipients = []
         with open(input_csv_path, newline="", encoding="utf-8-sig") as f:
             reader = csv.DictReader(f)
+            # Auto-detect column names (case-insensitive)
+            first_row = next(reader, None)
+            if not first_row:
+                raise ValueError("CSV file is empty")
+            
+            # Find email column (required)
+            email_col = None
+            for key in first_row.keys():
+                if key.lower().strip() in ['email', 'e-mail', 'email address']:
+                    email_col = key
+                    break
+            
+            if not email_col:
+                raise ValueError("Email column not found in CSV. Please ensure CSV has an 'Email' column.")
+            
+            # Find other columns (optional)
+            name_col = None
+            membership_id_col = None
+            mobile_col = None
+            
+            for key in first_row.keys():
+                key_lower = key.lower().strip()
+                if key_lower in ['name', 'full name', 'member name'] and not name_col:
+                    name_col = key
+                elif key_lower in ['membershipid', 'membership id', 'member id', 'memberid'] and not membership_id_col:
+                    membership_id_col = key
+                elif key_lower in ['mobile', 'phone', 'phone number', 'mobile number'] and not mobile_col:
+                    mobile_col = key
+            
+            # Process first row
+            email_val = first_row.get(email_col, "").strip().lower()
+            if email_val:
+                recipients.append({
+                    "email": email_val,
+                    "name": first_row.get(name_col, "").strip() if name_col else "",
+                    "membership_id": first_row.get(membership_id_col, "").strip() if membership_id_col else "",
+                    "mobile": first_row.get(mobile_col, "").strip() if mobile_col else "",
+                })
+            
+            # Process remaining rows
             for row in reader:
-                if all(k in row for k in ["Email", "Name", "MembershipID", "Mobile"]):
-                    recipients.append(
-                        {
-                            "email": row["Email"].strip().lower(),
-                            "name": row["Name"].strip(),
-                            "membership_id": row["MembershipID"].strip(),
-                            "mobile": row["Mobile"].strip(),
-                        }
-                    )
+                email_val = row.get(email_col, "").strip().lower()
+                if email_val:
+                    recipients.append({
+                        "email": email_val,
+                        "name": row.get(name_col, "").strip() if name_col else "",
+                        "membership_id": row.get(membership_id_col, "").strip() if membership_id_col else "",
+                        "mobile": row.get(mobile_col, "").strip() if mobile_col else "",
+                    })
         _update_job(job_id, total=len(recipients))
     except Exception as e:
         _update_job(job_id, status="failed")
@@ -309,6 +453,34 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/api/preview-csv", methods=["POST"])
+def preview_csv():
+    """Preview CSV columns for dynamic mapping"""
+    csv_file = request.files.get("csv_file")
+    if not csv_file:
+        return jsonify({"error": "No CSV file provided"}), 400
+
+    try:
+        csv_filename = secure_filename(csv_file.filename or f"preview-{uuid.uuid4().hex}.csv")
+        csv_path = os.path.join(UPLOAD_DIR, csv_filename)
+        csv_file.save(csv_path)
+
+        rows = _read_csv_rows(csv_path)
+        if not rows:
+            return jsonify({"error": "CSV file is empty"}), 400
+
+        columns = list(rows[0].keys())
+        # Clean up preview file
+        try:
+            os.remove(csv_path)
+        except:
+            pass
+
+        return jsonify({"columns": columns, "sample_row": rows[0] if rows else {}})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/send/ses", methods=["GET", "POST"])
 def send_ses():
     default_subject = os.environ.get(
@@ -326,6 +498,8 @@ def send_ses():
         from_email = request.form.get("from_email") or default_from
         youtube_link = request.form.get("youtube_link") or default_youtube
         config_set = request.form.get("config_set") or default_config_set
+        email_template = request.form.get("email_template") or "email_template.html"
+        column_mappings = request.form.get("column_mappings") or "{}"
 
         if not csv_file:
             flash("CSV file is required.", "danger")
@@ -350,7 +524,7 @@ def send_ses():
         }
         thread = threading.Thread(
             target=_ses_send_worker,
-            args=(job_id, csv_path, attachment_path, subject_template, from_email, config_set, default_youtube),
+            args=(job_id, csv_path, attachment_path, subject_template, from_email, config_set, youtube_link, email_template, column_mappings),
             daemon=True,
         )
         thread.start()
@@ -374,7 +548,7 @@ def send_msg91():
     default_delay = int(os.environ.get("MSG91_DELAY_BETWEEN_BATCHES", "2"))
 
     if request.method == "POST":
-        csv_file = request.files.get("csv_file")
+        csv_file = request.files.get("test-mails.csv")
         attachment_file = request.files.get("attachment")
         template_id = request.form.get("template_id") or default_template_id
         from_email = request.form.get("from_email") or default_from
